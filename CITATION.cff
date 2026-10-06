@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the paper it accompanies."
+title: "Personalized threshold bands for incomplete formal contexts: companion code"
+license: MIT
+repository-code: "https://github.com/cmorregof/personalized-threshold-bands"
+authors:
+  - family-names: "Castañeda"
+    given-names: "Mateo"
+    email: "mcastanedaca@unal.edu.co"
+    affiliation: "Universidad Nacional de Colombia, Sede Manizales"
+  - family-names: "Riaño-Rojas"
+    given-names: "Juan Carlos"
+    affiliation: "Universidad Nacional de Colombia, Sede Manizales"
+  - family-names: "Orrego Franco"
+    given-names: "Carlos Manuel"
+    affiliation: "Universidad Nacional de Colombia, Sede Manizales"
+preferred-citation:
+  type: article
+  title: "Personalized threshold bands for incomplete formal contexts: tolerance, certified concepts and stability"
+  year: 2026
+  authors:
+    - family-names: "Castañeda"
+      given-names: "Mateo"
+    - family-names: "Riaño-Rojas"
+      given-names: "Juan Carlos"
+    - family-names: "Orrego Franco"
+      given-names: "Carlos Manuel"
