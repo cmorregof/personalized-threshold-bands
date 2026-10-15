@@ -1,8 +1,9 @@
 """verify_theorems.py -- exhaustive and randomized checks, in exact rational arithmetic,
-of the statements of Sections 3 to 6 of the paper (statement numbers as in the paper):
-Prop. 3.8, Thm. 5.2, Thm. 5.7, Props. 5.8, 5.9, 5.12, Thm. 5.14, Prop. 5.15, Thm. 5.19
-and the running example of Section 6. The counts it prints are those quoted in Remark 5.20.
-Run:  python3 verify_theorems.py      (needs ptb.py and gudhi; about 30 seconds)"""
+of the statements of Sections 3 to 7 of the paper (statement numbers as in the paper):
+Prop. 3.8, Thm. 5.2, Thm. 5.7, Props. 5.8, 5.9, 5.11, 5.12, Thm. 5.14, Prop. 5.15, Thm. 5.19,
+Props. 7.1, 7.2, Cor. 7.3 and the running example of Section 6. The counts printed for
+Thm. 5.2 and Thm. 5.19 are those quoted in Remark 5.20.
+Run:  python3 verify_theorems.py      (needs ptb.py and gudhi; about a minute)"""
 import random, math
 from fractions import Fraction as Fr
 from itertools import product, permutations
@@ -181,6 +182,26 @@ assert inn[(F({0}), F({0, 2}))] == Fr(3, 2) and inn[(F({1}), F({0, 1}))] == 1 an
 ok("8 crisp concepts; out = -1/2 and rho = 1/2 for all; inner levels 1, 3/2, 3 (pairs) and 3/2, 1, 3 (singletons)")
 assert rho_ext(S, F({0, 1})) == 1 and rho_ext(S, F({0, 2})) == Fr(3, 2) and rho_ext(S, F({1, 2})) == Fr(1, 2)
 ok("rho_ext: {p1,p2} -> 1, {p1,p3} -> 3/2, {p2,p3} -> 1/2")
+ri = {B: rho_int(S, B) for B in powerset(3)}
+assert ri == {F(): Fr(1, 2), F({0}): Fr(1, 2), F({2}): Fr(1, 2), F({1}): 2, F({0, 2}): Fr(1, 2),
+              F({0, 1}): 1, F({1, 2}): 2, F({0, 1, 2}): INF}
+ok("Table 2, last column: rho_int = 1/2, 1/2, 1/2, 2, 1/2, 1, 2, +inf")
+def cert_by_enum(t, kind):
+    fams = []
+    for R in completions(S, t):
+        if kind == 'int':
+            fams.append({up(R, down(R, B, 3), 3) for B in powerset(3)})
+        else:
+            fams.append({down(R, up(R, X, 3), 3) for X in powerset(3)})
+    return set.intersection(*fams)
+assert cert_by_enum(Fr(1), 'int') == {F({1}), F({0, 1}), F({1, 2}), F({0, 1, 2})}
+assert cert_by_enum(Fr(2), 'int') == {F({1}), F({1, 2}), F({0, 1, 2})}
+assert cert_by_enum(Fr(3), 'int') == {F({0, 1, 2})}
+assert cert_by_enum(Fr(1), 'ext') == {F({0, 1, 2}), F({0, 1}), F({0, 2}), F({0})}
+assert cert_by_enum(Fr(3, 2), 'ext') == {F({0, 1, 2}), F({0, 2}), F({0})}
+assert cert_by_enum(Fr(2), 'ext') == {F({0, 1, 2})}
+assert not set.intersection(*[concepts(R) for R in completions(S, Fr(1))])
+ok("Step 6: certified intents and extents at t = 1, 3/2, 2, 3 by enumeration; no certified concept at t = 1")
 sure = existence_sets(S, 'sure')
 assert sure[(F({0}), F({0}))] == [(Fr(3, 2), Fr(4))] and sure[(F({1}), F({1}))] == [(Fr(3), Fr(7, 2))] and sure[(F({2}), F({2}))] == [(Fr(3), Fr(9, 2))]
 poss = existence_sets(S, 'possible')
@@ -267,4 +288,94 @@ from itertools import combinations
 assert injective(S) and injective(T)
 assert all(injective(rand_s(4, 4)) for _ in range(200))
 ok("on the crown, its tie variant and 200 random tables")
+# ---------------------------------------------------------------- Prop 5.11 (ii)-(iv): certified intents and closure systems
+print("Prop. 5.11  certified extents and intents: formulas, B^(sure poss) = B, closure systems, monotonicity")
+rg = random.Random(511)
+vals2 = [Fr(x, 2) for x in range(-6, 7)]
+def rnd_table(nG, nM):
+    out = []
+    for _ in range(nG):
+        row = []
+        for _ in range(nM):
+            r = rg.random()
+            row.append(Fr(0) if r < 0.15 else (rg.choice([INF, -INF]) if r < 0.2 else rg.choice(vals2)))
+        out.append(row)
+    return out
+n_int = n_cl = n_ineq = 0
+for _ in range(500):
+    nG, nM = rg.randint(1, 4), rg.randint(1, 4)
+    s_ = rnd_table(nG, nM)
+    ts = sorted({abs(x) for r in s_ for x in r if x not in (0, INF, -INF)} | {Fr(1, 3)})
+    ts = ts + [ts[-1] + 1]
+    for t in ts:
+        comps = list(completions(s_, t))
+        if len(comps) > 4096: continue
+        Rs, Rp = level_rel(s_, t), level_rel(s_, -t, strict=True)
+        ci = set.intersection(*[{up(R, down(R, B, nG), nM) for B in powerset(nM)} for R in comps])
+        ce = set.intersection(*[{down(R, up(R, X, nM), nG) for X in powerset(nG)} for R in comps])
+        for B in powerset(nM):
+            assert (B in ci) == (up(Rp, down(Rs, B, nG), nM) == B) == (t <= rho_int(s_, B)); n_int += 1
+        for X in powerset(nG):
+            assert (X in ce) == (t <= rho_ext(s_, X))
+        assert frozenset(range(nM)) in ci and frozenset(range(nG)) in ce
+        assert all(A & C in ci for A in ci for C in ci) and all(A & C in ce for A in ce for C in ce); n_cl += 1
+    for t1, t2 in zip(ts, ts[1:]):
+        assert {B for B in powerset(nM) if t2 <= rho_int(s_, B)} <= {B for B in powerset(nM) if t1 <= rho_int(s_, B)}
+        assert {X for X in powerset(nG) if t2 <= rho_ext(s_, X)} <= {X for X in powerset(nG) if t1 <= rho_ext(s_, X)}
+    for X in powerset(nG):
+        for B in powerset(nM):
+            r = rho(s_, X, B)
+            assert rho_ext(s_, X) >= r and rho_int(s_, B) >= r; n_ineq += 1
+ok(f"(ii) on {n_int} (table, t, B) cases; (iv) closure systems on {n_cl} (table, t) cases; monotone in t")
+ok(f"(iii) rho_ext(X) >= rho(X,B) and rho_int(B) >= rho(X,B) for all {n_ineq} signatures")
+
+# ---------------------------------------------------------------- Section 7: Props 7.1, 7.2 and Cor 7.3
+print("Props. 7.1, 7.2 and Cor. 7.3  missing values as zero budgets")
+n71 = n72 = 0
+for _ in range(800):
+    nG, nM = rg.randint(1, 4), rg.randint(1, 4)
+    sstar = [[rg.choice([v for v in vals2 if v != 0] + [INF, -INF]) for _ in range(nM)] for _ in range(nG)]
+    t = rg.choice([Fr(1, 4), Fr(1, 2), Fr(1), Fr(3, 2), Fr(5, 2)])
+    shat, miss = [], []
+    for g in range(nG):
+        row, mrow = [], []
+        for m in range(nM):
+            if rg.random() < 0.3:
+                row.append(Fr(0)); mrow.append(True)
+            else:
+                x = sstar[g][m]
+                row.append(x if x in (INF, -INF) else x + Fr(rg.randint(-99, 99), 100) * t); mrow.append(False)
+        shat.append(row); miss.append(mrow)
+    Rstar = [[x > 0 for x in r] for r in sstar]
+    Rs, Rp = level_rel(shat, t), level_rel(shat, -t, strict=True)
+    assert all(Rs[g][m] <= Rstar[g][m] <= Rp[g][m] for g in range(nG) for m in range(nM))   # Prop 7.1
+    comps = list(completions(shat, t))
+    if len(comps) > 4096: continue
+    for B in powerset(nM):                                                                    # Prop 7.2
+        supp = [len(down(R, B, nG)) for R in comps]
+        assert min(supp) == len(down(Rs, B, nG)) and max(supp) == len(down(Rp, B, nG))
+        assert len(down(Rs, B, nG)) <= len(down(Rstar, B, nG)) <= len(down(Rp, B, nG))
+        for g in range(nG):
+            has = [all(R[g][m] for m in B) for R in comps]
+            yes, no = all(Rs[g][m] for m in B), not all(Rp[g][m] for m in B)
+            assert not (yes and no)
+            if yes: assert all(has)
+            elif no: assert not any(has)
+            else: assert any(has) and not all(has)
+            n72 += 1
+    for _ in range(3):                                                                        # Cor 7.3
+        Rimp = [[(rg.random() < 0.5) if miss[g][m] else (shat[g][m] > 0) for m in range(nM)] for g in range(nG)]
+        assert all(Rs[g][m] <= Rimp[g][m] <= Rp[g][m] for g in range(nG) for m in range(nM))
+        cert_int = {B for B in powerset(nM) if t <= rho_int(shat, B)}
+        true_int = {up(Rstar, down(Rstar, B, nG), nM) for B in powerset(nM)}
+        for B in {up(Rimp, down(Rimp, B, nG), nM) for B in powerset(nM)}:
+            if B not in true_int: assert B not in cert_int
+        for B in powerset(nM):
+            for g in range(nG):
+                if all(Rimp[g][m] for m in B) != all(Rstar[g][m] for m in B):
+                    assert not all(Rs[g][m] for m in B) and all(Rp[g][m] for m in B)
+    n71 += 1
+ok(f"Prop. 7.1 and Cor. 7.3 on {n71} random tables with missing cells, errors below t and infinite entries")
+ok(f"Prop. 7.2: exact three-way answers and attained support bounds on {n72} (table, B, g) cases")
+
 print("\nALL STATEMENTS VERIFIED")

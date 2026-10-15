@@ -1,4 +1,4 @@
-"""make_figure.py -- draws Figure 1 of the paper (the running example of Section 6):
+"""make_figure.py -- draws Figure 2 of the paper (the running example of Section 6):
 (a) sure profiles and robustness of the sure concepts, (b) the Dowker barcode.
 Run:  python3 make_figure.py figures/fig_crown.pdf
       FIG_LANG=es python3 make_figure.py figures/fig_crown_es.pdf     (Spanish labels)

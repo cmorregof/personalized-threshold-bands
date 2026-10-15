@@ -155,26 +155,26 @@ E1 = existence_sets([s_1[0][:], [x + Fr(3, 5) for x in s_1[1]]], 'seisi')[sig]
 assert E0 == [(Fr(1), Fr(10))] and match_dist(E0, E1) == Fr(41, 10)
 ok("eta = 1, eps = 0.6: the profile splits and the matching distance is 4.1")
 
-# ---------------------------------------------------------------- Section 6.1: the crown, Table 2 and Figure 1
+# ---------------------------------------------------------------- Section 6.1: the crown, Table 2 and Figures 1 and 2
 print("Section 6.1  the crown")
 crisp = concepts(level_rel(S, 0, strict=True))
-table2 = {
-    (F({0, 1, 2}), F()):        (INF, Fr(-1, 2), (0, INF), INF),
-    (F({0, 1}), F({0})):        (Fr(1), Fr(-1, 2), (0, Fr(1)), Fr(1)),
-    (F({0, 2}), F({2})):        (Fr(3, 2), Fr(-1, 2), (0, Fr(3, 2)), Fr(3, 2)),
-    (F({1, 2}), F({1})):        (Fr(3), Fr(-1, 2), (0, Fr(3)), Fr(1, 2)),
-    (F({0}), F({0, 2})):        (Fr(3, 2), Fr(-1, 2), (0, Fr(3, 2)), Fr(3, 2)),
-    (F({1}), F({0, 1})):        (Fr(1), Fr(-1, 2), (0, Fr(1)), Fr(1, 2)),
-    (F({2}), F({1, 2})):        (Fr(3), Fr(-1, 2), (0, Fr(3)), Fr(1, 2)),
-    (F(), F({0, 1, 2})):        (INF, Fr(-1, 2), (0, INF), Fr(1, 2)),
+table2 = {   # (inner level, outer level, sure profile, rho_ext, rho_int)
+    (F({0, 1, 2}), F()):        (INF, Fr(-1, 2), (0, INF), INF, Fr(1, 2)),
+    (F({0, 1}), F({0})):        (Fr(1), Fr(-1, 2), (0, Fr(1)), Fr(1), Fr(1, 2)),
+    (F({0, 2}), F({2})):        (Fr(3, 2), Fr(-1, 2), (0, Fr(3, 2)), Fr(3, 2), Fr(1, 2)),
+    (F({1, 2}), F({1})):        (Fr(3), Fr(-1, 2), (0, Fr(3)), Fr(1, 2), Fr(2)),
+    (F({0}), F({0, 2})):        (Fr(3, 2), Fr(-1, 2), (0, Fr(3, 2)), Fr(3, 2), Fr(1, 2)),
+    (F({1}), F({0, 1})):        (Fr(1), Fr(-1, 2), (0, Fr(1)), Fr(1, 2), Fr(1)),
+    (F({2}), F({1, 2})):        (Fr(3), Fr(-1, 2), (0, Fr(3)), Fr(1, 2), Fr(2)),
+    (F(), F({0, 1, 2})):        (INF, Fr(-1, 2), (0, INF), Fr(1, 2), INF),
 }
 assert set(table2) == crisp
 sure, poss = existence_sets(S, 'sure'), existence_sets(S, 'possible')
-for (X, B), (i, o, prof, rext) in table2.items():
+for (X, B), (i, o, prof, rext, rint) in table2.items():
     assert inn(S, X, B) == i and out(S, X, B) == o and rho(S, X, B) == Fr(1, 2)
     assert sure[(X, B)] == [prof] and poss[(X, B)] == [(0, Fr(1, 2))]
-    assert rho_ext(S, X) == rext
-ok("Table 2: inner and outer levels, sure and possible profiles, rho = 1/2 and rho_ext for the eight crisp concepts")
+    assert rho_ext(S, X) == rext and rho_int(S, B) == rint
+ok("Table 2: inner and outer levels, sure and possible profiles, rho = 1/2, rho_ext and rho_int for the eight crisp concepts")
 assert {g for g in range(3) if S[g][0] >= 1} == {0, 1} and {g for g in range(3) if S[g][0] >= Fr(3, 2)} == {0}
 assert S[0][0] > max(S[1][0], 0) and raw[0][0][0] <= raw[0][0][1]
 assert S[1][1] > max(S[2][1], 0) and raw[1][0][1] <= raw[1][0][2]
@@ -188,6 +188,14 @@ ok("Step 4: for t in (1/2,1] the completion in which p1 has a2 destroys each of 
 Rc = level_rel(S, Fr(3, 4)); Rc[0][1] = True
 assert (F({0, 1}), F({0, 1})) in concepts(Rc)
 ok("Step 5: rho_ext({p1,p2}) = 1 > rho = 1/2; in the completion with (p1,a2) = + the intent grows to {a1,a2}")
+cint = lambda t: {B for B in powerset(3) if t <= rho_int(S, B)}
+cext = lambda t: {X for X in powerset(3) if t <= rho_ext(S, X)}
+assert cint(Fr(1)) == {F({1}), F({0, 1}), F({1, 2}), F({0, 1, 2})} and cint(Fr(2)) == {F({1}), F({1, 2}), F({0, 1, 2})}
+assert cint(Fr(3)) == {F({0, 1, 2})} and cint(Fr(1, 2)) == {B for X, B in crisp}
+assert cext(Fr(1)) == {F({0, 1, 2}), F({0, 1}), F({0, 2}), F({0})} and cext(Fr(3, 2)) == {F({0, 1, 2}), F({0, 2}), F({0})}
+assert cext(Fr(2)) == {F({0, 1, 2})}
+assert len(down(level_rel(S, Fr(1)), F({1}), 3)) == 2 and len(down(level_rel(S, -Fr(1), strict=True), F({1}), 3)) == 3
+ok("Step 6 and Figure 1: certified intents (crown, diamond, chain, point) and extents; the support of {a2} lies in [2,3]")
 assert sure[(F({0}), F({0}))] == [(Fr(3, 2), Fr(4))]
 assert sure[(F({1}), F({1}))] == [(Fr(3), Fr(7, 2))]
 assert sure[(F({2}), F({2}))] == [(Fr(3), Fr(9, 2))]
@@ -195,10 +203,10 @@ assert inn(S, F({0, 1, 2}), F({1})) == Fr(-1, 2) and out(S, F({0, 1, 2}), F({1})
 assert poss[(F({0, 1, 2}), F({1}))] == [(Fr(1, 2), Fr(2))]
 se = existence_sets(S, 'seisi')
 assert len(se) == 24 and all(len(v_) == 1 for v_ in se.values())
-ok("Step 6: late sure concepts, the possible concept (G,{a2}) on (1/2,2], 24 SE-ISI signatures each on one interval")
+ok("Step 7: late sure concepts, the possible concept (G,{a2}) on (1/2,2], 24 SE-ISI signatures each on one interval")
 Fv = {sig_: dowker_F(S, sig_) for sig_ in [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)]}
 assert Fv == {(0,): 4, (1,): Fr(7, 2), (2,): Fr(9, 2), (0, 1): 1, (0, 2): Fr(3, 2), (1, 2): 3, (0, 1, 2): Fr(-1, 2)}
-ok("Step 7: the values of F on vertices, segments and the triangle")
+ok("Step 8: the values of F on vertices, segments and the triangle")
 
 # ---------------------------------------------------------------- Section 6.2: a tie
 print("Section 6.2  a tie")
@@ -213,8 +221,8 @@ assert Ee == [(Fr(3, 2), Fr(5, 2) - eps), (Fr(5, 2) + eps, Fr(4))]
 assert match_dist([(Fr(3, 2), Fr(4))], Ee) == 1 + eps
 ok("the SE-ISI profile (3/2,4] of ({p1},{a1},M) splits at 5/2, a jump of 1 + eps in matching distance")
 
-# ---------------------------------------------------------------- Section 7: Galois closures are not additive
-print("Section 7  closures of the modal-style example")
+# ---------------------------------------------------------------- Section 8: Galois closures are not additive
+print("Section 8  closures of the modal-style example")
 Rm = [[True, False], [False, True], [True, True], [False, False]]  # objects a, b, c, d; attributes m1, m2
 def clos(X):
     return down(Rm, up(Rm, X, 2), 4)
