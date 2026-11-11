@@ -122,13 +122,36 @@ def concepts_of(R):
     return {(sel[i].tobytes(), i) for i in intents}, intents, sel
 
 
-def certified_intents(S, Neg):
+def certified_intents(S, Neg, s=None):
     """B is an intent of every completion iff every m outside B has a witness g that surely
-    has all of B and surely lacks m (Proposition 5.11(ii))."""
+    has all of B and surely lacks m (Proposition 5.11(ii)). Given the certainty table s, also
+    returns rho_int for every B (see rho_int_all)."""
     bits, _ = all_subsets(S.shape[1])
     selS = derive_all(S)
     wit = (selS.astype(np.float32) @ Neg.astype(np.float32)) > 0
-    return np.all(wit | (bits > 0), axis=1), selS
+    cert = np.all(wit | (bits > 0), axis=1)
+    if s is None:
+        return cert, selS
+    return cert, selS, rho_int_all(s)
+
+
+def rho_int_all(s):
+    """rho_int(B) = min_{m not in B} max_g min(phi_B(g), -s(g,m)), with phi_B(g) = min_{m in B} s(g,m),
+    min of nothing = +inf and max of nothing = -inf, for every attribute subset B (by bit code):
+    the largest tolerance t at which B is an intent of every completion of K(t)."""
+    N, n = s.shape
+    phi = np.empty((1 << n, N))
+    phi[0] = np.inf
+    for code in range(1, 1 << n):
+        low = code & -code
+        phi[code] = np.minimum(phi[code ^ low], s[:, low.bit_length() - 1])
+    codes = np.arange(1 << n)
+    rho = np.full(1 << n, np.inf)
+    for m in range(n):
+        out = ((codes >> m) & 1) == 0
+        val = np.minimum(phi[out], -s[:, m]).max(axis=1) if N else np.full(out.sum(), -np.inf)
+        rho[out] = np.minimum(rho[out], val)
+    return rho
 
 
 def _size(code):

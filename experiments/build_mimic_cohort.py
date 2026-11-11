@@ -20,6 +20,16 @@ Step 2  builds OUT_DIR/cohort_labs12.parquet, one row per patient:
         * for every patient, the latest eligible admission.
 Columns: hadm_id, subject_id, admittime, the twelve panel values, and b_<test> (baseline) and
 n_<test> (number of earlier values) for each test.
+Step 3  (with --v2) leaves cohort_labs12.parquet untouched and writes OUT_DIR/cohort_labs12_v2.parquet,
+        the same rows and columns plus, for every test:
+        * d_<test>: the personal dispersion, 1.4826 times the median absolute deviation of the
+          same earlier values that give the baseline;
+        * r_<test>, h_<test>: the re-measurement, the value at the first charting time strictly
+          after the panel time and at most 24 hours later (median if several values share that
+          time; NaN if there is none), and the hours elapsed between the two.
+        The panel values and baselines are recomputed on the way and must agree with step 2.
+
+    python3 build_mimic_cohort.py MIMIC_IV_DIR OUT_DIR --labs FILE --v2   # step 3 only
 """
 import os
 import sys
@@ -111,6 +121,53 @@ def step2(mimic, out, labs):
     return dst, n
 
 
+def step3(out, labs):
+    src = os.path.join(out, 'cohort_labs12.parquet')
+    dst = os.path.join(out, 'cohort_labs12_v2.parquet')
+    con = connect()
+    con.execute(f"CREATE TABLE coh AS SELECT * FROM '{src}'")
+    con.execute(f"""CREATE TABLE labs AS SELECT l.* FROM '{labs}' l
+                    WHERE l.valuenum IS NOT NULL AND l.subject_id IN (SELECT subject_id FROM coh)""")
+    sel = ['coh.*']
+    for itemid, name in TESTS.items():
+        con.execute(f"""
+            CREATE TABLE x_{name} AS
+            WITH l AS (SELECT subject_id, charttime, valuenum FROM labs WHERE itemid = {itemid}),
+            t1 AS (SELECT c.hadm_id, c.subject_id, min(l.charttime) AS t1
+                   FROM coh c JOIN l ON l.subject_id = c.subject_id
+                    AND l.charttime >= c.admittime - INTERVAL 6 HOUR
+                    AND l.charttime <= c.admittime + INTERVAL 24 HOUR
+                   GROUP BY c.hadm_id, c.subject_id),
+            t2 AS (SELECT t1.hadm_id, min(l.charttime) AS t2
+                   FROM t1 JOIN l ON l.subject_id = t1.subject_id
+                    AND l.charttime > t1.t1 AND l.charttime <= t1.t1 + INTERVAL 24 HOUR
+                   GROUP BY t1.hadm_id),
+            v1 AS (SELECT t1.hadm_id, t1.t1, median(l.valuenum) AS v1
+                   FROM t1 JOIN l ON l.subject_id = t1.subject_id AND l.charttime = t1.t1
+                   GROUP BY t1.hadm_id, t1.t1),
+            v2 AS (SELECT t2.hadm_id, t2.t2, median(l.valuenum) AS r
+                   FROM t2 JOIN t1 USING (hadm_id)
+                   JOIN l ON l.subject_id = t1.subject_id AND l.charttime = t2.t2
+                   GROUP BY t2.hadm_id, t2.t2),
+            base AS (SELECT c.hadm_id, median(l.valuenum) AS b, mad(l.valuenum) AS mad
+                     FROM coh c JOIN l ON l.subject_id = c.subject_id
+                      AND l.charttime >= c.admittime - INTERVAL 3 YEAR
+                      AND l.charttime <  c.admittime - INTERVAL 7 DAY
+                     GROUP BY c.hadm_id)
+            SELECT v1.hadm_id, v1.v1, base.b, 1.4826 * base.mad AS d, v2.r,
+                   date_diff('second', v1.t1, v2.t2) / 3600.0 AS h
+            FROM v1 JOIN base USING (hadm_id) LEFT JOIN v2 USING (hadm_id)""")
+        bad = con.execute(f"""SELECT count(*) FROM coh LEFT JOIN x_{name} x USING (hadm_id)
+                              WHERE x.v1 IS NULL OR abs(x.v1 - coh.{name}) > 1e-9
+                                 OR abs(x.b - coh.b_{name}) > 1e-9""").fetchone()[0]
+        assert bad == 0, (name, bad)
+        sel.append(f'x_{name}.d AS d_{name}, x_{name}.r AS r_{name}, x_{name}.h AS h_{name}')
+    joins = ' '.join(f'JOIN x_{n} USING (hadm_id)' for n in TESTS.values())
+    con.execute(f"COPY (SELECT {', '.join(sel)} FROM coh {joins} ORDER BY hadm_id) TO '{dst}' (FORMAT parquet)")
+    n = con.execute(f"SELECT count(*) FROM '{dst}'").fetchone()[0]
+    return dst, n
+
+
 if __name__ == '__main__':
     mimic, out = sys.argv[1], sys.argv[2]
     os.makedirs(out, exist_ok=True)
@@ -120,5 +177,9 @@ if __name__ == '__main__':
     else:
         labs = step1(mimic, out)
         print(f'step 1 -> {labs} ({time.time() - t0:.0f} s)')
+    if '--v2' in sys.argv:
+        dst, n = step3(out, labs)
+        print(f'step 3 -> {dst}: {n} admissions ({time.time() - t0:.0f} s)')
+        sys.exit()
     dst, n = step2(mimic, out, labs)
     print(f'step 2 -> {dst}: {n} admissions ({time.time() - t0:.0f} s)')
