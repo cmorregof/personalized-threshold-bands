@@ -44,11 +44,11 @@ All the numbers of Section 7, Table 3 and Figures 3 and 4 are recomputed from th
 ```bash
 cd experiments
 python3 summarize_results.py          # every number quoted in Section 7
-python3 make_table_results.py         # the numbers of Table 3
+python3 make_table_results.py         # Table 3 (mean +- SD) as LaTeX, results/table3*.tex
 python3 plot_results.py ../figures    # Figures 3 and 4 (FIG_LANG=es for Spanish labels)
 ```
 
-**Public data.** The three datasets ship with scikit-learn, so the runs can be repeated anywhere; the results are deterministic and reproduce the tables in `results/` exactly.
+**Public data.** The three datasets ship with scikit-learn, so the runs can be repeated anywhere. The runs are deterministic. With the versions in `requirements.txt`, rerunning `run_public.py` reproduces `results/public_runs.csv` exactly except in 25 of its 5 850 rows, all of them kNN imputation, where support counts differ by at most 14 patterns, most likely because the two scikit-learn versions break ties between equidistant neighbours differently. No number quoted in the paper changes.
 
 ```bash
 python3 run_public.py results/public_runs.csv    # 900 runs, a few minutes
@@ -68,6 +68,23 @@ python3 run_mimic.py OUT/cohort_labs12.parquet results/mimic_A_N1000.csv      A 
 ```
 
 `run_mimic.py` asserts the guarantees of Propositions 7.1 and 7.2 in every run and writes only aggregate metrics. In the paper these scripts were run on the computer of the credentialed author, and only the aggregate tables in `results/` left it.
+
+**Tolerance sweep and abstaining competitors.** Step 3 of the cohort builder adds, for every test, the personal dispersion (1.4826 times the median absolute deviation of the earlier values) and the re-measurement (the next value of the same test within 24 hours of the panel value), writing `OUT/cohort_labs12_v2.parquet` and leaving `cohort_labs12.parquet` untouched. Every script below accepts `--quick` (N = 200, two repetitions) for a test run of a few seconds.
+
+```bash
+python3 build_mimic_cohort.py /path/to/mimic-iv-3.1 OUT --labs OUT/labs12.parquet --v2
+python3 test_rho_int.py                                   # rho_int against brute force over all completions
+python3 remeasure_stats.py OUT/cohort_labs12_v2.parquet results/mimic_remeasure_stats.csv
+python3 run_tsweep.py  OUT/cohort_labs12_v2.parquet results/mimic_T_sweep.csv    # 30 runs, about 2 min
+python3 run_abstain.py OUT/cohort_labs12_v2.parquet results/mimic_abstain.csv    # 40 runs, about 15 min
+python3 plot_tsweep.py ../figures/fig_tsweep.pdf
+python3 plot_abstain.py ../figures/fig_risk_coverage.pdf
+python3 make_table_results.py                             # Table 3 and its per-dataset supplement, as LaTeX
+```
+
+`run_tsweep.py` writes `mimic_T_sweep.csv`, `mimic_T_sweep_queries.csv` and `mimic_T_rho_int.csv`. Against the complete panel it asserts that certification never errs at any tolerance; against the re-measured panel, which need not be a completion, it reports the error. `run_abstain.py` reuses the samples and masks of `run_mimic.py` (design `main`) and of `run_tsweep.py` (design `sweep`). `experiments/results/RESUMEN_E1_E2.md` summarizes both experiments.
+
+**Seeds.** Every run is determined by its repetition index `seed` = 0, ..., 9. The generator `numpy.random.default_rng(10007 * seed + 3)` draws the sample and then the mask of missing cells, in `run_mimic.py`, `run_tsweep.py` and `run_abstain.py` alike, so the three scripts use the same admissions and masks when their sampling frame is the same. Single imputations use `random_state = seed`; the `k`-th draw of multiple imputation uses `random_state = 1000 * seed + k`, and the bootstrap of kNN uses `default_rng(7919 * seed + 11)`. The public data use `default_rng(1000 * seed + 17)` in `run_public.py`.
 
 ## Where each statement is checked
 
