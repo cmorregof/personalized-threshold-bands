@@ -1,6 +1,8 @@
-# Resultados de E1: bandas personales y barrido de la tolerancia
+# Resultados de E1 y E2
 
-E2 (competidor que se abstiene, Tabla 3 con ± DE) y E3 (reproducibilidad) no se han hecho todavía. Este resumen cubre solo E1.
+E1: bandas personales y barrido de la tolerancia. E2: competidores que se abstienen y Tabla 3 con ± DE (sección al final). E3 (reproducibilidad) no se ha hecho todavía.
+
+## E1: bandas personales y barrido de la tolerancia
 
 ## Diseño, con las dos decisiones que se apartan de la especificación
 
@@ -24,7 +26,7 @@ E2 (competidor que se abstiene, Tabla 3 con ± DE) y E3 (reproducibilidad) no se
 
 ### §7.2, datos clínicos: la re-medición como verdad empírica (`mimic_remeasure_stats.csv`)
 
-- De las celdas del panel, 74,8 % tienen re-medición dentro de 24 h, con mediana de 12,5 h.
+- De las celdas del panel, 74,8 % tienen re-medición dentro de 24 h, con mediana de 12,7 h.
 - Mediana de |s − s_re|: 0,67 semianchos (bandas personales). Cuantil 90: 3,4. Cuantil 99: 16.
 - Fracción de celdas decididas (|s| ≥ t) que la re-medición pasa al otro lado de C, con bandas personales:
 
@@ -103,3 +105,65 @@ Las líneas se refieren a `revision_nov2026/personalized_thresholds_IJAR.tex` ta
 | 762 | *Measurement noise* (resultados) | Coherente con la decisión de la l. 712 |
 | 819 | Conclusión, "Two practical rules follow…" | La regla "report the concepts of large ρ" tiene ahora apoyo empírico (deciles de ρ_int) |
 | nuevo §7.4 | — | Párrafo que distinga lo medido con δ = 0 (certificación de Burmeister–Holzer) de lo medido con bandas, y que diga que la re-medición en 24 h no satisface la hipótesis de la Prop. 7.1 |
+
+
+---
+
+## E2: competidores que se abstienen (`run_abstain.py`, `mimic_abstain.csv`, figura `fig_risk_coverage`)
+
+### Diseño
+
+- **Competidores.** Hay dos, y cada uno usa 20 tablas completadas:
+  - imputación múltiple con `IterativeImputer(sample_posterior=True)`, con las líneas base como predictores;
+  - kNN (k = 5) con donantes tomados de un remuestreo bootstrap.
+- **Voto.** Para cada pregunta paciente–patrón, el voto es la fracción de tablas que responden «sí». Al nivel α, el competidor responde «sí» si el voto es ≥ 1 − α, «no» si es ≤ α, y se abstiene en medio. Se probaron α ∈ {0; 0,05; 0,1; 0,2; 0,3; 0,5}. α = 0 exige unanimidad, y α = 0,5 es la mayoría, sin abstención.
+- **Diseño «main».** Reutiliza las muestras y máscaras de `run_mimic.py` con N = 1 000 y la verdad es el panel completo. Reproduce exactamente los números publicados: 8,0 % de preguntas abiertas, y MICE con 2,26 % de error en todas y 28,1 % en las abiertas.
+- **Diseño «sweep».** Usa las muestras de E1, con las verdades obs y re-medición.
+- **Configuraciones.** MCAR y MNARc al 10 %, 10 repeticiones, 40 corridas, unos 15 min.
+
+### Resultados (MCAR 10 %; media de 10 repeticiones, DE ≤ 0,4 puntos)
+
+**Verdad = panel completo (diseño main).** La certificación responde 92,0 % de las preguntas sin ningún error.
+
+| competidor | α | cobertura | riesgo (error entre las respondidas) | responde, de las abiertas por la certificación | error en esas |
+|---|---|---|---|---|---|
+| imputación múltiple | 0 (unanimidad) | 93,3 % | 0,04 % | 15,9 % | 3,0 % |
+| imputación múltiple | 0,1 | 94,1 % | 0,15 % | 26,7 % | 6,4 % |
+| imputación múltiple | 0,3 | 96,7 % | 0,88 % | 58,4 % | 18,3 % |
+| imputación múltiple | 0,5 (mayoría) | 100 % | 2,31 % | 100 % | 28,8 % |
+| kNN bootstrap | 0 | 94,8 % | 0,74 % | 34,9 % | 25,1 % |
+| MICE (una imputación) | — | 100 % | 2,26 % | 100 % | 28,1 % |
+| ausente | — | 100 % | 3,81 % | 100 % | 47,4 % |
+
+- **La imputación múltiple con unanimidad es un competidor serio.** Responde algo más que la certificación (93,3 % frente a 92,0 %) con un error casi nulo (0,04 %). Aun así, ese error no es cero, y no hay ninguna garantía que lo acote.
+- Con MNARc los resultados son parecidos:
+  - imputación múltiple con α = 0: 92,8 % de cobertura y 0,05 % de riesgo;
+  - en las abiertas: 6,2 % de error.
+- **La línea base «ausente»** es la peor en las preguntas abiertas: yerra en 47,4 % de ellas, casi al azar.
+
+**Verdad = re-medición (diseño sweep).** La imputación múltiple no puede bajar de 93,0 % de cobertura, porque solo se abstiene cuando sus tablas discrepan, y su riesgo allí es 12,8 %. La certificación con bandas recorre toda la curva:
+
+| t | cobertura | riesgo |
+|---|---|---|
+| 0,25 | 82,4 % | 10,5 % |
+| 1 | 55,3 % | 5,9 % |
+| 3 | 18,3 % | 3,0 % |
+
+Con una banda por examen, en t = 3 la cobertura es 16,4 % y el riesgo 1,9 %. Ningún competidor ofrece un punto de operación con riesgo bajo frente a la re-medición.
+
+### Tabla 3 regenerada (`make_table_results.py` → `table3.tex`, `table3_datasets.tex`)
+
+- Media ± DE sobre las 10 repeticiones. Todos los valores coinciden con `c2_tabla3_propuesta.md`.
+- Fila nueva «Absent (least completion)», con las celdas de preguntas que antes faltaban:
+  - 3,8 ± 0,1 % de error en todas las preguntas;
+  - 47,4 ± 1,1 % en las abiertas.
+- Hay una tabla suplementaria por dataset público. La precisión de la media va de 0,40 (breast cancer) a 0,96 (diabetes).
+- `summarize_results.py` cuenta ahora las configuraciones distintas: 121 (78 públicas y 43 clínicas), con 780 y 430 corridas, como dice el paper.
+
+### Qué cambia en el paper si se integra E2
+
+- **§7.2, *Methods*:** describir los dos competidores que se abstienen.
+- **§7.3:**
+  - un párrafo *Abstaining competitors* con la figura `fig_risk_coverage`;
+  - la Tabla 3 reemplazada por `table3.tex`, y `table3_datasets.tex` como tabla suplementaria.
+- **§7.4:** la ventaja de la certificación frente a la re-medición está en que gradúa la abstención y la acota con una garantía, no en el número de preguntas que responde. Con la verdad completa, la imputación múltiple unánime responde un poco más, casi sin errores, pero sin garantía.

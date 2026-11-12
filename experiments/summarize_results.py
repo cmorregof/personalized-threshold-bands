@@ -14,6 +14,10 @@ f3 = lambda x: f'{x:.3f}'
 P = R('public_runs.csv')
 cfg = P[['dataset', 'mechanism', 'rate', 'seed', 'scenario']].drop_duplicates()
 print(f'public: {len(cfg)} configurations')
+distinct = lambda c, keys: c.assign(mechanism=np.where(np.isclose(c.rate, 0), '-', c.mechanism))[keys].drop_duplicates()
+dP = distinct(cfg, ['dataset', 'mechanism', 'rate', 'scenario'])
+print(f'  distinct settings (rate 0% counted once per dataset and scenario): {len(dP)}, '
+      f'runs {len(distinct(cfg, ["dataset", "mechanism", "rate", "seed", "scenario"]))}')
 C = P[P.method == 'certified']
 assert (C.prec_int.fillna(1) == 1).all() and (C.prec_con.fillna(1) == 1).all() and C.covered.astype(bool).all()
 print('  certified: precision 1 on intents and concepts, intervals cover, in every configuration')
@@ -62,6 +66,9 @@ q = pd.concat([R(f) for f in ['mimic_A_MCAR_MAR_queries.csv', 'mimic_A_MNAR_MNAR
 tiers = pd.concat([R(f) for f in ['mimic_A_MCAR_MAR_tiers.csv', 'mimic_A_MNAR_MNARc_tiers.csv', 'mimic_A_N1000_tiers.csv', 'mimic_B_MCAR_MNARc_tiers.csv']])
 cfg = pat[['N', 'mechanism', 'rate', 'seed', 'scenario']].drop_duplicates()
 print(f'\nMIMIC: {len(cfg)} configurations')
+dM = distinct(cfg, ['N', 'mechanism', 'rate', 'scenario'])
+print(f'  distinct settings: {len(dM)}, runs {len(distinct(cfg, ["N", "mechanism", "rate", "seed", "scenario"]))}; '
+      f'total distinct settings {len(dP) + len(dM)}')
 c = pat[pat.method == 'certified']
 assert (c.prec_int.fillna(1) == 1).all() and (c.prec_con.fillna(1) == 1).all() and c.covered.astype(bool).all()
 assert (q.err_where_cert_decides == 0).all()

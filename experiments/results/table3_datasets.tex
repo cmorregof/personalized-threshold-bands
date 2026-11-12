@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.4pt}
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{2}{c}{Wine} & \multicolumn{2}{c}{Breast cancer} & \multicolumn{2}{c}{Diabetes}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+ & Precision & Recall & Precision & Recall & Precision & Recall\\
+\midrule
+Mean & $0.57\pm0.07$ & $0.89\pm0.05$ & $0.40\pm0.04$ & $1.00\pm0.00$ & $0.96\pm0.01$ & $1.00\pm0.01$\\
+Median & $0.63\pm0.12$ & $0.87\pm0.05$ & $0.41\pm0.07$ & $0.97\pm0.02$ & $0.99\pm0.01$ & $0.98\pm0.02$\\
+kNN & $0.92\pm0.02$ & $0.90\pm0.03$ & $0.70\pm0.07$ & $0.96\pm0.03$ & $1.00\pm0.00$ & $1.00\pm0.00$\\
+MICE & $0.92\pm0.04$ & $0.91\pm0.03$ & $0.91\pm0.07$ & $0.97\pm0.02$ & $1.00\pm0.00$ & $1.00\pm0.00$\\
+\addlinespace[2pt]
+Absent (least completion) & $0.62\pm0.08$ & $0.88\pm0.04$ & $0.26\pm0.01$ & $1.00\pm0.00$ & $1.00\pm0.00$ & $0.99\pm0.01$\\
+Certification & $1.00\pm0.00$ & $0.65\pm0.04$ & $1.00\pm0.00$ & $0.89\pm0.04$ & $1.00\pm0.00$ & $0.96\pm0.03$\\
+\bottomrule
+\end{tabular}
+\caption{Public data with $10\%$ of the values missing completely at random, by dataset, as mean $\pm$ standard deviation over the ten repetitions.}
+\label{tab:results-datasets}
+\end{table}

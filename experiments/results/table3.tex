@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.4pt}
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{2}{c}{Public data} & \multicolumn{2}{c}{MIMIC-IV, $N=300$} & \multicolumn{2}{c}{MIMIC-IV, $N=1\,000$}\\
+ & \multicolumn{2}{c}{patterns} & \multicolumn{2}{c}{patterns} & \multicolumn{2}{c}{questions}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+ & Precision & Recall & Precision & Recall & Wrong, all & Wrong, open\\
+\midrule
+Mean & $0.64\pm0.03$ & $0.96\pm0.02$ & $0.93\pm0.03$ & $0.99\pm0.01$ & $3.2\pm0.1\,\%$ & $39.9\pm1.0\,\%$\\
+Median & $0.68\pm0.05$ & $0.94\pm0.02$ & $0.94\pm0.03$ & $0.99\pm0.01$ & $3.2\pm0.2\,\%$ & $39.9\pm1.4\,\%$\\
+kNN & $0.87\pm0.03$ & $0.95\pm0.02$ & $0.95\pm0.03$ & $0.99\pm0.01$ & $2.9\pm0.2\,\%$ & $35.6\pm1.6\,\%$\\
+MICE & $0.94\pm0.03$ & $0.96\pm0.01$ & $0.97\pm0.03$ & $0.98\pm0.02$ & $2.3\pm0.1\,\%$ & $28.1\pm1.6\,\%$\\
+\addlinespace[2pt]
+Absent (least completion) & $0.63\pm0.03$ & $0.96\pm0.01$ & $0.96\pm0.03$ & $0.97\pm0.01$ & $3.8\pm0.1\,\%$ & $47.4\pm1.1\,\%$\\
+Certification & $1.00\pm0.00$ & $0.83\pm0.03$ & $1.00\pm0.00$ & $0.92\pm0.03$ & $0$ & --\\
+\bottomrule
+\end{tabular}
+\caption{Results with $10\%$ of the values missing completely at random, as mean $\pm$ standard deviation over the ten repetitions. For the public data each repetition is first averaged over the three datasets. ``Wrong, all'' is the share of all patient--pattern questions answered wrongly. ``Wrong, open'' is the share of wrong answers among the questions that certification leaves open, which are $8.0\pm0.3\%$ of the total. ``Absent'' declares every missing cell absent, which gives the least completion. Patterns are shown for samples of $300$ admissions, because with $1\,000$ the precision of every method exceeds $0.98$ on average. Certification never answers wrongly, and every wrong answer of imputation falls on an open question (Corollary~\ref{cor:imputation}).}
+\label{tab:results}
+\end{table}
